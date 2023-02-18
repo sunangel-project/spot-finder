@@ -1,6 +1,6 @@
 use std::process::exit;
 use std::{io, fs::File};
-use osmpbfreader;
+use osmpbfreader::{self, OsmObj};
 
 const OSM_DATA_FILE: &str = "data/germany-latest.osm.pbf";
 
@@ -15,14 +15,24 @@ fn get_osm_file_reader() -> io::BufReader<File> {
     }
 }
 
+fn is_bench(o: &OsmObj) -> bool {
+    o.is_node() && o.tags().contains_key("bench")
+}
+
+fn is_in_search_area(o: &OsmObj) -> bool {
+    true
+}
 
 fn main() {
     let mut pbf = osmpbfreader::OsmPbfReader::new(get_osm_file_reader());
-    let objs = pbf.get_objs_and_deps(|obj| {
-        obj.is_way() && obj.tags().contains_key("highway")
+    
+    pbf.par_iter().filter_map(|o_res| match o_res {
+        Ok(o) => Some(o),
+        Err(_) => None,
+    }).filter(|o|
+        is_bench(o) && is_in_search_area(o)
+    ).for_each(|o| {
+        println!("{o:?}")
     })
-    .unwrap();
-    for (id, obj) in &objs {
-        println!("{:?}: {:?}", id, obj);
-    }
+
 }
