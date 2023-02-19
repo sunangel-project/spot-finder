@@ -17,3 +17,11 @@ impl From<&Node> for Location {
     }
 }
 
+impl Location {
+    pub fn dist(&self, other: &Self) -> f64 {
+        let diff_lat = other.lat - self.lat;
+        let diff_lon = other.long -self.long;
+
+        f64::sqrt(diff_lat.powi(2) + diff_lon.powi(2))
+    }
+}
