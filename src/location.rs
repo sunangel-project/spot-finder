@@ -1,5 +1,4 @@
 use serde::{Serialize, Deserialize};
-use osmpbfreader::Node;
 
 const DECIMICRO: f64 = 1. / 10_000_000.;
 
@@ -9,6 +8,7 @@ pub struct Location {
     lon: i32,
 }
 
+/*
 impl From<&Node> for Location {
     fn from(value: &Node) -> Self {
         Location {
@@ -16,7 +16,7 @@ impl From<&Node> for Location {
             lon: value.decimicro_lon,
         }
     }
-}
+} */
 
 impl Location {
     pub fn dist(&self, other: &Self) -> f64 {
