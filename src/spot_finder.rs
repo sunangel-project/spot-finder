@@ -20,8 +20,6 @@ async fn get_osm_data(loc: &Location, rad: u32) -> Result<String, anyhow::Error>
         rad, loc.lat, loc.lon,
     );
     
-    println!("{body}");
-    
     let client = reqwest::Client::new();
     let request = client
         .post(OVERPASS_URL)
