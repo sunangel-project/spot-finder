@@ -39,9 +39,9 @@ async fn get_osm_data(loc: &Location, rad: u32) -> Result<String, anyhow::Error>
 // Spot
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Spot {
-    r#type: String,
-    loc: Location,
-    dir: Option<u32>,
+    pub r#type: String,
+    pub loc: Location,
+    pub dir: Option<u32>,
 }
 
 // Searching

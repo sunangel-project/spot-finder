@@ -1,19 +1,27 @@
 use std::str;
 
 use serde::{Deserialize, Serialize};
-use async_nats::{Message, Client, HeaderMap};
+use async_nats::{Message, Client};
 use futures_util::stream::StreamExt;
 
 pub mod spot_finder;
 pub mod location;
 
 use location::Location;
-use spot_finder::find_spots;
+use spot_finder::{find_spots, Spot};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SearchQuery {
+struct SearchQuery {
+    id: String,
     loc: Location,
     rad: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SpotMessage {
+    spot: Spot,
+    part_num: usize,
+    total_num: usize,
 }
 
 #[tokio::main]
@@ -34,25 +42,24 @@ async fn main() -> Result<(), async_nats::Error> {
 
 // Event Loop
 async fn handle_message(client: &Client, msg: &Message) -> Result<(), async_nats::Error> {
-    let headers_in = msg.headers.as_ref()
-        .expect("expected message to have headers");
 
     let payload = str::from_utf8(&msg.payload)?;
     let query: SearchQuery = serde_json::from_str(payload)?;
     
     let spots = find_spots(&query.loc, query.rad).await?;
+    let total_num = spots.len();
     
-    for (i, spot) in spots.iter().enumerate() {
-        let payload = serde_json::to_string(&spot)?;
-        
-        let mut headers_out = HeaderMap::from(headers_in.to_owned());
-        headers_out.insert("part-id", i.to_string().as_str());
-        headers_out.insert("num-parts", spots.len().to_string().as_str());
+    for (i, spot) in spots.into_iter().enumerate() {
+        let spot_msg = SpotMessage {
+            spot,
+            part_num: i,
+            total_num
+        };
+        let spot_payload = serde_json::to_string(&spot_msg)?;
 
-        client.publish_with_headers(
+        client.publish(
             "spots".to_string(),
-            headers_out,
-            payload.into(),
+            spot_payload.into(),
         ).await?;
     }
 
