@@ -38,7 +38,7 @@ async fn handle_message(client: &Client, msg: &Message) -> Result<(), async_nats
     let payload = str::from_utf8(&msg.payload)?;
     let query: SearchQuery = serde_json::from_str(payload)?;
     
-    let spots = find_spots(&query.loc, query.rad)?;
+    let spots = find_spots(&query.loc, query.rad).await?;
     
     for spot in spots {
         let payload = serde_json::to_string(&spot)?;

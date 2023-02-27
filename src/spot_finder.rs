@@ -1,17 +1,44 @@
-use std::{io, fs::File};
-use osmpbfreader::{self, Node, OsmObj};
+use std::io::Cursor;
+
+use anyhow::bail;
+use osm_xml::{OSM, Node};
+use reqwest::StatusCode;
 use serde::{Serialize, Deserialize};
 
 use crate::location::Location;
 
-const OSM_DATA_FILE: &str = "data/baden-wuerttemberg-latest.osm.pbf";
+const OVERPASS_URL: &str = "https://lz4.overpass-api.de/api/interpreter";
 
-fn get_osm_file_reader() -> Result<io::BufReader<File>, async_nats::Error> {
-    Ok(io::BufReader::new(File::open(OSM_DATA_FILE)?))
+async fn get_osm_data(loc: &Location, rad: u32) -> Result<String, anyhow::Error>  {
+    let body = format!( // TODO: if need more nodes, adjust query
+        "nwr(around:{},{},{})->.all;
+        (
+            node.all[amenity=bench];
+            node.all[bench=yes];
+        );
+        out meta;",
+        rad, loc.lat, loc.lon,
+    );
+    
+    println!("{body}");
+    
+    let client = reqwest::Client::new();
+    let request = client
+        .post(OVERPASS_URL)
+        .body(body);
+    let response = request.send().await?;
+    
+    if response.status() == StatusCode::OK {
+        Ok(response.text().await?)
+    } else {
+        bail!(
+            "overpass returned {}",
+            response.status(),
+        )
+    }
 }
 
 // Spot
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Spot {
     r#type: String,
@@ -21,35 +48,25 @@ pub struct Spot {
 
 // Searching
 
-fn is_bench(o: &OsmObj) -> bool {
-    o.tags().contains_key("bench")
+fn is_bench(n: &&Node) -> bool {
+    n.tags.iter().any(|t|
+        (t.key == "amenity" && t.key == "bench")
+        || t.key == "bench"
+    )
 }
 
-fn is_in_search_area(node: &Node, point: &Location, radius: f64) -> bool {
-    point.dist(&Location::from(node)) < radius
-}
+pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nats::Error> {
+    let osm_data = get_osm_data(loc, rad).await?;
+    let osm = OSM::parse(Cursor::new(osm_data))?;
+    
+    let spots = osm.nodes.iter()
+    .map(|(_, node)| node)
+    .filter(is_bench)
+    .map(|node| Spot {
+        r#type: "bench".to_string(),
+        loc: Location::from(node),
+        dir: None,
+    }).collect();
 
-pub fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nats::Error> {
-    let mut pbf = osmpbfreader::OsmPbfReader::new(get_osm_file_reader()?);
-
-    let nodes = pbf.par_iter()
-        .map(Result::unwrap)
-        .filter(|o| o.is_node());
-
-    let spots = nodes
-        .filter(is_bench)
-        .filter(|o| match o.node() {
-            Some(node) => is_in_search_area(node, loc, rad.into()),
-            _ => false,
-        })
-        .filter_map(|o| match o.node() {
-            Some(node) => Some(Spot {
-                r#type: "bench".to_string(),
-                loc: Location::from(node),
-                dir: None, // get_direction(node),
-            }),
-            _ => None,
-        }).collect();
-        
     Ok(spots)
 }
