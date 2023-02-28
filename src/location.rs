@@ -1,7 +1,7 @@
 use osm_xml::Node;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Location {
     pub lat: f64,
     pub lon: f64,

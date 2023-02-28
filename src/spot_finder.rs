@@ -20,8 +20,6 @@ async fn get_osm_data(loc: &Location, rad: u32) -> Result<String, anyhow::Error>
         rad, loc.lat, loc.lon,
     );
     
-    println!("{body}");
-    
     let client = reqwest::Client::new();
     let request = client
         .post(OVERPASS_URL)
@@ -41,9 +39,9 @@ async fn get_osm_data(loc: &Location, rad: u32) -> Result<String, anyhow::Error>
 // Spot
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Spot {
-    r#type: String,
-    loc: Location,
-    dir: Option<u32>,
+    pub r#type: String,
+    pub loc: Location,
+    pub dir: Option<u32>,
 }
 
 // Searching
