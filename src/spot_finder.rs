@@ -41,14 +41,14 @@ async fn get_osm_data(loc: &Location, rad: u32) -> Result<String, anyhow::Error>
 pub struct Spot {
     pub r#type: String,
     pub loc: Location,
-    pub dir: Option<u32>,
+    pub dir: Option<f64>,
 }
 
 // Searching
 
 fn is_bench(n: &&Node) -> bool {
     n.tags.iter().any(|t|
-        (t.key == "amenity" && t.key == "bench")
+        (t.key == "amenity" && t.val == "bench")
         || t.key == "bench"
     )
 }
@@ -60,11 +60,20 @@ pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nat
     let spots = osm.nodes.iter()
     .map(|(_, node)| node)
     .filter(is_bench)
-    .map(|node| Spot {
+    .map(|node| {
+        println!("{:?}", node);
+        
+        // TODO:  assumes degrees in float. what happens if NE, W, etc.
+        let dir = (&node.tags).into_iter()
+            .find(|tag| tag.key == "direction")
+            .map(|tag| str::parse::<f64>(&tag.val).ok()) // this line
+            .flatten();
+    
+        Spot {
         r#type: "bench".to_string(),
         loc: Location::from(node),
-        dir: None,
-    }).collect();
+        dir,
+    }}).collect();
 
     Ok(spots)
 }
