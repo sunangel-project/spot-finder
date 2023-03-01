@@ -8,13 +8,20 @@ pub mod spot_finder;
 pub mod location;
 
 use location::Location;
-use spot_finder::find_spots;
+use spot_finder::{find_spots, Spot};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SearchQuery {
+struct SearchQuery {
+    id: String,
     loc: Location,
     rad: u32,
-    id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SpotMessage {
+    spot: Spot,
+    part_num: usize,
+    total_num: usize,
 }
 
 #[tokio::main]
@@ -35,14 +42,25 @@ async fn main() -> Result<(), async_nats::Error> {
 
 // Event Loop
 async fn handle_message(client: &Client, msg: &Message) -> Result<(), async_nats::Error> {
+
     let payload = str::from_utf8(&msg.payload)?;
     let query: SearchQuery = serde_json::from_str(payload)?;
     
-    let spots = find_spots(&query.loc, query.rad)?;
+    let spots = find_spots(&query.loc, query.rad).await?;
+    let total_num = spots.len();
     
-    for spot in spots {
-        let payload = serde_json::to_string(&spot)?;
-        client.publish("spots".to_string(), payload.into()).await?;
+    for (i, spot) in spots.into_iter().enumerate() {
+        let spot_msg = SpotMessage {
+            spot,
+            part_num: i,
+            total_num
+        };
+        let spot_payload = serde_json::to_string(&spot_msg)?;
+
+        client.publish(
+            "spots".to_string(),
+            spot_payload.into(),
+        ).await?;
     }
 
     Ok(())
