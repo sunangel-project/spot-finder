@@ -53,6 +53,22 @@ fn is_bench(n: &&Node) -> bool {
     )
 }
 
+fn direction_from_string(input: &str) -> Option<f64> {
+    None
+}
+
+fn get_direction(node: &Node) -> Option<f64> {
+    // TODO:  assumes degrees in float. what happens if NE, W, etc.
+    (&node.tags).into_iter()
+        .find(|tag| tag.key == "direction")
+        .map(|tag| {
+            match str::parse::<f64>(&tag.val) {
+                Ok(dir) => Some(dir),
+                Err(_) => direction_from_string(&tag.val),
+            }
+        }).flatten()
+}
+
 pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nats::Error> {
     let osm_data = get_osm_data(loc, rad).await?;
     let osm = OSM::parse(Cursor::new(osm_data))?;
@@ -61,18 +77,10 @@ pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nat
     .map(|(_, node)| node)
     .filter(is_bench)
     .map(|node| {
-        println!("{:?}", node);
-        
-        // TODO:  assumes degrees in float. what happens if NE, W, etc.
-        let dir = (&node.tags).into_iter()
-            .find(|tag| tag.key == "direction")
-            .map(|tag| str::parse::<f64>(&tag.val).ok()) // this line
-            .flatten();
-    
         Spot {
         r#type: "bench".to_string(),
         loc: Location::from(node),
-        dir,
+        dir: get_direction(node),
     }}).collect();
 
     Ok(spots)
