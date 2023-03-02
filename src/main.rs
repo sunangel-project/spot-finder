@@ -26,23 +26,22 @@ struct SpotMessage {
 
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
-    let client = async_nats::connect("localhost").await?;
-    let mut subscriber = client
+    let client = &async_nats::connect("localhost").await?;
+    let subscriber = client
         .queue_subscribe("search".to_string(), "spot-finder".to_string())
         .await?;
     
-    while let Some(msg) = subscriber.next().await {
-        if let Err(err) = handle_message(&client, &msg).await {
+    subscriber.for_each_concurrent(16, |msg| async move {
+        if let Err(err) = handle_message(client, &msg).await {
             println!("[ERROR] {err:?}");
         }
-    }
+    }).await;
     
     Ok(())
 }
 
 // Event Loop
 async fn handle_message(client: &Client, msg: &Message) -> Result<(), async_nats::Error> {
-
     let payload = str::from_utf8(&msg.payload)?;
     let query: SearchQuery = serde_json::from_str(payload)?;
     
