@@ -5,7 +5,6 @@ on:
     branches:
       - latest
       - develop
-      - feature/direction_string
 
 jobs:
   build_and_test:

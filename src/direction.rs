@@ -1,5 +1,4 @@
 use anyhow::{bail, Error, Result, anyhow};
-use osm_xml::Node;
 
 fn quarter_circle_card(input: String) -> Result<f64, Error> {
     match input.as_str() {
@@ -45,23 +44,13 @@ fn parse_direction(input: &str) -> Result<f64, Error> {
         .or(parse_direction_cardinals(input))
 }
 
-fn direction_from_string(input: &str) -> Result<f64, Error> {
+pub fn direction_from_string(input: &str) -> Result<f64, Error> {
     if input.is_empty() {
         bail!("empty input for cardinal direction parsing")
     } else {
         parse_direction(input)
     }
 }
-
-pub fn direction_of_node(node: &Node) -> Option<f64> {
-    (&node.tags).into_iter()
-        .find(|tag| tag.key == "direction")
-        .map(|tag| tag.val.as_str())
-        .map(direction_from_string)
-        .map(Result::ok)
-        .flatten()
-}
-
 
 #[cfg(test)]
 mod tests {
