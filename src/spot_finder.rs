@@ -6,6 +6,7 @@ use reqwest::StatusCode;
 use serde::{Serialize, Deserialize};
 
 use crate::location::Location;
+use crate::direction;
 
 const OVERPASS_URL: &str = "https://lz4.overpass-api.de/api/interpreter";
 
@@ -53,22 +54,6 @@ fn is_bench(n: &&Node) -> bool {
     )
 }
 
-fn direction_from_string(input: &str) -> Option<f64> {
-    None
-}
-
-fn get_direction(node: &Node) -> Option<f64> {
-    // TODO:  assumes degrees in float. what happens if NE, W, etc.
-    (&node.tags).into_iter()
-        .find(|tag| tag.key == "direction")
-        .map(|tag| {
-            match str::parse::<f64>(&tag.val) {
-                Ok(dir) => Some(dir),
-                Err(_) => direction_from_string(&tag.val),
-            }
-        }).flatten()
-}
-
 pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nats::Error> {
     let osm_data = get_osm_data(loc, rad).await?;
     let osm = OSM::parse(Cursor::new(osm_data))?;
@@ -80,7 +65,7 @@ pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nat
         Spot {
         r#type: "bench".to_string(),
         loc: Location::from(node),
-        dir: get_direction(node),
+        dir: direction::direction_of_node(node),
     }}).collect();
 
     Ok(spots)
