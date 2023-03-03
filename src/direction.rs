@@ -1,37 +1,53 @@
-use anyhow::{bail, Error};
+use anyhow::{bail, Error, Result, anyhow};
 use osm_xml::Node;
+
+fn quarter_circle_card(input: String) -> Result<f64, Error> {
+    match input.as_str() {
+        "N" => Ok(0.),
+        "NNE" => Ok(22.5),
+        "NE" => Ok(45.),
+        "ENE" => Ok(67.5),
+        "E" => Ok(90.),
+        _ => Err(anyhow!("this should not happen, '{input}' is invalid"))
+    }
+}
+
+fn half_circle_card(input: String) -> Result<f64, Error> {
+    if input.contains('S') {
+        Ok(180. - quarter_circle_card(input.replace("S", "N"))?)
+    } else {
+        quarter_circle_card(input)
+    }
+}
+
+fn full_circle_card(input: String) -> Result<f64, Error> {
+    if input.contains('W') {
+        Ok(360. - half_circle_card(input.replace("W", "E"))?)
+    } else {
+        half_circle_card(input)
+    }
+}
 
 fn parse_direction_cardinals(input: &str) -> Result<f64, Error> {
     let in_upper = input.to_uppercase();
-    let mut in_iter = in_upper.chars();
 
-    let mut allowed_chars = vec!['N', 'E', 'S', 'W'];
+    if in_upper.len() == 0 || in_upper.len() > 3 || in_upper.chars().any(
+        |cardinal| !vec!['N', 'E', 'S', 'W'].contains(&cardinal)
+    ) {
+        bail!("invalid cardinals '{input}'");
+    }
     
-    let first_char = match in_iter.next() {
-        None => bail!("input string has 0 length"),
-        Some(first_char) => first_char,
-    };
-    
-    let mut dir = match first_char {
-        'N' => 0.,
-        'E' => 90.,
-        'S' => 180.,
-        'W' => 270.,
-        _ => bail!("first character {first_char} not allowed"),
-    };
-
-    Ok(dir)
+    full_circle_card(in_upper)
 }
 
-fn parse_direction(input: &str) -> Option<f64> {
+fn parse_direction(input: &str) -> Result<f64, Error> {
     str::parse::<f64>(input)
         .or(parse_direction_cardinals(input))
-        .ok()
 }
 
-fn direction_from_string(input: &str) -> Option<f64> {
+fn direction_from_string(input: &str) -> Result<f64, Error> {
     if input.is_empty() {
-        None
+        bail!("empty input for cardinal direction parsing")
     } else {
         parse_direction(input)
     }
@@ -42,6 +58,7 @@ pub fn direction_of_node(node: &Node) -> Option<f64> {
         .find(|tag| tag.key == "direction")
         .map(|tag| tag.val.as_str())
         .map(direction_from_string)
+        .map(Result::ok)
         .flatten()
 }
 
@@ -52,24 +69,32 @@ mod tests {
 
     #[test]
     fn empty() {
-        assert_eq!(None, direction_from_string(""))
+        direction_from_string("").expect_err("error expected");
     }
     
     #[test]
     fn int() {
-        assert_eq!(Some(10.), direction_from_string("10"))
+        assert_eq!(10., direction_from_string("10").unwrap())
     }
     
     #[test]
     fn float() {
-        assert_eq!(Some(0.5), direction_from_string("0.5"))
+        assert_eq!(0.5, direction_from_string("0.5").unwrap())
     }
     
     #[test]
     fn card_one() {
-        assert_eq!(Some(0.), direction_from_string("N"));
-        assert_eq!(Some(90.), direction_from_string("E"));
-        assert_eq!(Some(180.), direction_from_string("S"));
-        assert_eq!(Some(270.), direction_from_string("W"));
+        assert_eq!(0., direction_from_string("N").unwrap());
+        assert_eq!(90., direction_from_string("E").unwrap());
+        assert_eq!(180., direction_from_string("S").unwrap());
+        assert_eq!(270., direction_from_string("W").unwrap());
+    }
+    
+    #[test]
+    fn card_two() {
+        assert_eq!(45., direction_from_string("NE").unwrap());
+        assert_eq!(315., direction_from_string("NW").unwrap());
+        assert_eq!(135., direction_from_string("SE").unwrap());
+        assert_eq!(225., direction_from_string("SW").unwrap());
     }
 }
