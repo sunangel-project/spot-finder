@@ -83,7 +83,7 @@ mod tests {
     }
     
     #[test]
-    fn card_one() {
+    fn card_4() {
         assert_eq!(0., direction_from_string("N").unwrap());
         assert_eq!(90., direction_from_string("E").unwrap());
         assert_eq!(180., direction_from_string("S").unwrap());
@@ -91,10 +91,17 @@ mod tests {
     }
     
     #[test]
-    fn card_two() {
+    fn card_8() {
         assert_eq!(45., direction_from_string("NE").unwrap());
         assert_eq!(315., direction_from_string("NW").unwrap());
         assert_eq!(135., direction_from_string("SE").unwrap());
         assert_eq!(225., direction_from_string("SW").unwrap());
+    }
+    
+    #[test]
+    fn card_16() {
+        assert_eq!(67.5, direction_from_string("ENE").unwrap());
+        assert_eq!(157.5, direction_from_string("SSE").unwrap());
+        assert_eq!(337.5, direction_from_string("NNW").unwrap());
     }
 }
