@@ -1,5 +1,5 @@
 on:
-  puch:
+  push:
     branches:
       - latest
       - develop
