@@ -6,6 +6,7 @@ use futures_util::stream::StreamExt;
 
 pub mod spot_finder;
 pub mod location;
+pub mod direction;
 
 use location::Location;
 use spot_finder::{find_spots, Spot};
