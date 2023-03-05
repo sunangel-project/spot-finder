@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::io::Cursor;
 
 use anyhow::bail;
@@ -70,7 +71,7 @@ fn direction_of_node(node: &Node) -> Option<f64> {
         .flatten()
 }
 
-pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nats::Error> {
+pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, Box<dyn Error>> {
     let osm_data = get_osm_data(loc, rad).await?;
     let osm = OSM::parse(Cursor::new(osm_data))?;
     
