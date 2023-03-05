@@ -1,0 +1,21 @@
+name: Autoupdate
+
+on:
+  push:
+    branches:
+      -feature/autoupdate
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      
+      - uses: romoh/dependencies-autoupdate@v1.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          update-command: "cargo update && cargo test"
+
