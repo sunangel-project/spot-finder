@@ -21,10 +21,9 @@ struct SearchQuery {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SpotMessage {
-    spot: Spot,
-    part_num: usize,
-    total_num: usize,
+struct PartMessage {
+    id: usize,
+    of: usize,
 }
 
 #[tokio::main]
@@ -68,10 +67,10 @@ fn build_output_payload(spot: Spot, part_num: usize, total_num: usize, query_val
     let output_obj = output.as_object_mut()
         .ok_or(anyhow!("query was not an object: {query_value:?}"))?;
 
-    let spot_msg = SpotMessage {
-        spot, part_num, total_num
-    };
-    output_obj.insert("spot".into(), serde_json::to_value(spot_msg)?);
+    output_obj.insert("spot".into(), serde_json::to_value(spot)?);
+    output_obj.insert("part".into(), serde_json::to_value(
+        PartMessage{ id: part_num, of: total_num })?
+    );
 
     Ok(output)
 }
