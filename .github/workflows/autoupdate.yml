@@ -3,7 +3,7 @@ name: Autoupdate
 on:
   push:
     branches:
-      -feature/autoupdate
+      - feature/autoupdate
 
 jobs:
   update:
