@@ -17,5 +17,5 @@ jobs:
       - uses: romoh/dependencies-autoupdate@v1.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          update-command: "cargo update && cargo test"
+          update-command: "'cargo update && cargo test'"
 
