@@ -1,14 +1,23 @@
-use std::str;
+use std::{str::{self, FromStr}, error::Error};
 
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use async_nats::{Message, Client};
 use futures_util::stream::StreamExt;
 
 pub mod spot_finder;
 pub mod location;
+pub mod direction;
 
 use location::Location;
+use serde_json::Value;
 use spot_finder::{find_spots, Spot};
+
+
+#[derive(Debug, Serialize, Deserialize)]
+struct InMessage {
+    search_query: SearchQuery,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SearchQuery {
@@ -18,50 +27,57 @@ struct SearchQuery {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SpotMessage {
-    spot: Spot,
-    part_num: usize,
-    total_num: usize,
+struct PartMessage {
+    id: usize,
+    of: usize,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
-    let client = async_nats::connect("localhost").await?;
-    let mut subscriber = client
+    let client = &async_nats::connect("localhost").await?;
+    let subscriber = client
         .queue_subscribe("search".to_string(), "spot-finder".to_string())
         .await?;
     
-    while let Some(msg) = subscriber.next().await {
-        if let Err(err) = handle_message(&client, &msg).await {
+    subscriber.for_each_concurrent(16, |msg| async move {
+        if let Err(err) = handle_message(client, &msg).await {
             println!("[ERROR] {err:?}");
         }
-    }
+    }).await;
     
     Ok(())
 }
 
 // Event Loop
-async fn handle_message(client: &Client, msg: &Message) -> Result<(), async_nats::Error> {
-
+async fn handle_message(client: &Client, msg: &Message) -> Result<(), Box<dyn Error>> {
     let payload = str::from_utf8(&msg.payload)?;
-    let query: SearchQuery = serde_json::from_str(payload)?;
-    
+
+    let in_message: InMessage = serde_json::from_str(payload)?;
+    let query = in_message.search_query;
+
     let spots = find_spots(&query.loc, query.rad).await?;
     let total_num = spots.len();
     
+    let in_value = Value::from_str(payload)?;
     for (i, spot) in spots.into_iter().enumerate() {
-        let spot_msg = SpotMessage {
-            spot,
-            part_num: i,
-            total_num
-        };
-        let spot_payload = serde_json::to_string(&spot_msg)?;
-
         client.publish(
             "spots".to_string(),
-            spot_payload.into(),
+           build_output_payload(spot, i, total_num, &in_value)?.to_string().into(),
         ).await?;
     }
 
     Ok(())
+}
+
+fn build_output_payload(spot: Spot, part_num: usize, total_num: usize, query_value: &Value) -> Result<Value, Box<dyn Error>>{
+    let mut output = query_value.clone();
+    let output_obj = output.as_object_mut()
+        .ok_or(anyhow!("query was not an object: {query_value:?}"))?;
+
+    output_obj.insert("spot".into(), serde_json::to_value(spot)?);
+    output_obj.insert("part".into(), serde_json::to_value(
+        PartMessage{ id: part_num, of: total_num })?
+    );
+
+    Ok(output)
 }

@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::io::Cursor;
 
 use anyhow::bail;
@@ -6,6 +7,7 @@ use reqwest::StatusCode;
 use serde::{Serialize, Deserialize};
 
 use crate::location::Location;
+use crate::direction;
 
 const OVERPASS_URL: &str = "https://lz4.overpass-api.de/api/interpreter";
 
@@ -39,7 +41,7 @@ async fn get_osm_data(loc: &Location, rad: u32) -> Result<String, anyhow::Error>
 // Spot
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Spot {
-    pub r#type: String,
+    pub kind: String,
     pub loc: Location,
     pub dir: Option<f64>,
 }
@@ -53,7 +55,23 @@ fn is_bench(n: &&Node) -> bool {
     )
 }
 
-pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nats::Error> {
+fn direction_of_node(node: &Node) -> Option<f64> {
+    (&node.tags).into_iter()
+        .find(|tag| tag.key == "direction")
+        .map(|tag| tag.val.as_str())
+        .map(direction::direction_from_string)
+        .map(|dir| {
+            if let Err(err) = &dir {
+                println!("Couldn't parse direction of node {node:?}, {err}")
+            }
+            
+            dir
+        })
+        .map(Result::ok)
+        .flatten()
+}
+
+pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, Box<dyn Error>> {
     let osm_data = get_osm_data(loc, rad).await?;
     let osm = OSM::parse(Cursor::new(osm_data))?;
     
@@ -61,18 +79,10 @@ pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, async_nat
     .map(|(_, node)| node)
     .filter(is_bench)
     .map(|node| {
-        println!("{:?}", node);
-        
-        // TODO:  assumes degrees in float. what happens if NE, W, etc.
-        let dir = (&node.tags).into_iter()
-            .find(|tag| tag.key == "direction")
-            .map(|tag| str::parse::<f64>(&tag.val).ok()) // this line
-            .flatten();
-    
         Spot {
-        r#type: "bench".to_string(),
+        kind: "bench".to_string(),
         loc: Location::from(node),
-        dir,
+        dir: direction_of_node(node),
     }}).collect();
 
     Ok(spots)
