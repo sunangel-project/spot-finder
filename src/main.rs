@@ -13,6 +13,12 @@ use location::Location;
 use serde_json::Value;
 use spot_finder::{find_spots, Spot};
 
+
+#[derive(Debug, Serialize, Deserialize)]
+struct InMessage {
+    search_query: SearchQuery,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct SearchQuery {
     id: String,
@@ -46,16 +52,17 @@ async fn main() -> Result<(), async_nats::Error> {
 async fn handle_message(client: &Client, msg: &Message) -> Result<(), Box<dyn Error>> {
     let payload = str::from_utf8(&msg.payload)?;
 
-    let query_value = Value::from_str(payload)?;
-    let query: SearchQuery = serde_json::from_str(payload)?;
-    
+    let in_message: InMessage = serde_json::from_str(payload)?;
+    let query = in_message.search_query;
+
     let spots = find_spots(&query.loc, query.rad).await?;
     let total_num = spots.len();
     
+    let in_value = Value::from_str(payload)?;
     for (i, spot) in spots.into_iter().enumerate() {
         client.publish(
             "spots".to_string(),
-           build_output_payload(spot, i, total_num, &query_value)?.to_string().into(),
+           build_output_payload(spot, i, total_num, &in_value)?.to_string().into(),
         ).await?;
     }
 
