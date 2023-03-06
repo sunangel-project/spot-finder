@@ -41,7 +41,7 @@ async fn get_osm_data(loc: &Location, rad: u32) -> Result<String, anyhow::Error>
 // Spot
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Spot {
-    pub r#type: String,
+    pub kind: String,
     pub loc: Location,
     pub dir: Option<f64>,
 }
@@ -80,7 +80,7 @@ pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, Box<dyn E
     .filter(is_bench)
     .map(|node| {
         Spot {
-        r#type: "bench".to_string(),
+        kind: "bench".to_string(),
         loc: Location::from(node),
         dir: direction_of_node(node),
     }}).collect();
