@@ -5,6 +5,7 @@ on:
     branches:
       - latest
       - develop
+      - feature/autotest
 
 jobs:
   build_and_test:
@@ -15,9 +16,16 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - uses: actions-rs/cargo@v1
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.2.1
+
+      - name: Build
+        uses: actions-rs/cargo@v1
         with:
           command: build
-      - uses: actions-rs/cargo@v1
+
+      - name: Test
+        uses: actions-rs/cargo@v1
         with:
           command: test
