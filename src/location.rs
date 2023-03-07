@@ -1,5 +1,5 @@
 use osm_xml::Node;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Location {
