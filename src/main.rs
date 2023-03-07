@@ -36,7 +36,8 @@ struct PartMessage {
 
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
-    let client = &async_nats::connect("nats").await?;
+    let host = std::env::var("NATS_HOST").unwrap_or("localhost".into());
+    let client = &async_nats::connect(host).await?;
     let subscriber = client
         .queue_subscribe("search".to_string(), "spot-finder".to_string())
         .await?;
