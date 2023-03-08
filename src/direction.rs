@@ -13,7 +13,7 @@ fn quarter_circle_card(input: String) -> Result<f64, Error> {
 
 fn half_circle_card(input: String) -> Result<f64, Error> {
     if input.contains('S') {
-        Ok(180. - quarter_circle_card(input.replace("S", "N"))?)
+        Ok(180. - quarter_circle_card(input.replace('S', "N"))?)
     } else {
         quarter_circle_card(input)
     }
@@ -21,7 +21,7 @@ fn half_circle_card(input: String) -> Result<f64, Error> {
 
 fn full_circle_card(input: String) -> Result<f64, Error> {
     if input.contains('W') {
-        Ok(360. - half_circle_card(input.replace("W", "E"))?)
+        Ok(360. - half_circle_card(input.replace('W', "E"))?)
     } else {
         half_circle_card(input)
     }
@@ -30,7 +30,7 @@ fn full_circle_card(input: String) -> Result<f64, Error> {
 fn parse_direction_cardinals(input: &str) -> Result<f64, Error> {
     let in_upper = input.to_uppercase();
 
-    if in_upper.len() == 0
+    if in_upper.is_empty()
         || in_upper.len() > 3
         || in_upper
             .chars()

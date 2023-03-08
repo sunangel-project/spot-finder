@@ -51,8 +51,8 @@ fn is_bench(n: &&Node) -> bool {
 }
 
 fn direction_of_node(node: &Node) -> Option<f64> {
-    (&node.tags)
-        .into_iter()
+    node.tags
+        .iter()
         .find(|tag| tag.key == "direction")
         .map(|tag| tag.val.as_str())
         .map(direction::direction_from_string)
@@ -63,8 +63,7 @@ fn direction_of_node(node: &Node) -> Option<f64> {
 
             dir
         })
-        .map(Result::ok)
-        .flatten()
+        .and_then(Result::ok)
 }
 
 pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, Box<dyn Error>> {
@@ -73,8 +72,7 @@ pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, Box<dyn E
 
     let spots = osm
         .nodes
-        .iter()
-        .map(|(_, node)| node)
+        .values()
         .filter(is_bench)
         .map(|node| Spot {
             kind: "bench".to_string(),
