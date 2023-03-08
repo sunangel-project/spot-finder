@@ -5,6 +5,7 @@ on:
     branches:
       - latest
       - develop
+      - feature/automate_clippy
 
 jobs:
   build_and_test:
@@ -28,3 +29,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+      
+      - name: Lint
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          arguments: -- -D warnings
