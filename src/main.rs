@@ -13,7 +13,7 @@ pub mod location;
 pub mod spot_finder;
 
 use location::Location;
-use serde_json::Value;
+use serde_json::{json, Value};
 use spot_finder::{find_spots, Spot};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,6 +34,13 @@ struct PartMessage {
     of: usize,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct ErrorMessage {
+    sender: String,
+    reason: String,
+    input: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
     let host = std::env::var("NATS_HOST").unwrap_or("localhost".into());
@@ -45,7 +52,7 @@ async fn main() -> Result<(), async_nats::Error> {
     subscriber
         .for_each_concurrent(16, |msg| async move {
             if let Err(err) = handle_message(client, &msg).await {
-                println!("[ERROR] {err:?}");
+                send_error_message(client, &msg, err).await
             }
         })
         .await;
@@ -99,4 +106,25 @@ fn build_output_payload(
     );
 
     Ok(output)
+}
+
+async fn send_error_message(client: &Client, msg: &Message, err: Box<dyn Error>) {
+    if let Err(_) = client
+        .publish(
+            "error".to_string(),
+            build_error_payload(msg, &err).to_string().into(),
+        )
+        .await
+    {
+        println!("Could not send error out!\n{}", err)
+    }
+}
+
+fn build_error_payload(msg: &Message, err: &Box<dyn Error>) -> String {
+    json!(ErrorMessage {
+        sender: "spot-finder".to_string(),
+        reason: format!("{err}"),
+        input: format!("{msg:?}"),
+    })
+    .to_string()
 }
