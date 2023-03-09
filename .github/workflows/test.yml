@@ -5,6 +5,7 @@ on:
     branches:
       - latest
       - develop
+      - feature/automate_clippy
 
 jobs:
   build_and_test:
@@ -12,19 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
       - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build
 
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: cargo test
+      
+      - name: Lint
+        run: cargo clippy -- -D warnings
