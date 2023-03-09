@@ -63,8 +63,7 @@ fn direction_of_node(node: &Node) -> Option<f64> {
 
             dir
         })
-        .map(Result::ok)
-        .flatten()
+        .and_then(Result::ok)
 }
 
 pub async fn find_spots(loc: &Location, rad: u32) -> Result<Vec<Spot>, Box<dyn Error>> {

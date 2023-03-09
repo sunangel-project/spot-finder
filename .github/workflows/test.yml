@@ -13,15 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
-      
-      - name: Info
-        run: |
-          cargo --version
-          cargo install cargo-edit
-          cargo upgrade
 
       - name: Build
         run: cargo build
