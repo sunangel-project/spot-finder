@@ -64,10 +64,7 @@ async fn main() -> Result<(), async_nats::Error> {
 async fn handle_message(client: &Client, msg: &Message) -> Result<(), Box<dyn Error>> {
     let payload = str::from_utf8(&msg.payload)?;
 
-    let in_message: InMessage = serde_json::from_str(payload)?;
-    let query = in_message.search_query;
-
-    let spots = find_spots(&query.loc, query.rad).await?;
+    let spots = handle_payload(payload).await?;
     let total_num = spots.len();
 
     let in_value = Value::from_str(payload)?;
@@ -83,6 +80,12 @@ async fn handle_message(client: &Client, msg: &Message) -> Result<(), Box<dyn Er
     }
 
     Ok(())
+}
+
+async fn handle_payload(payload: &str) -> Result<Vec<Spot>, Box<dyn Error>> {
+    let in_message: InMessage = serde_json::from_str(payload)?;
+    let query = in_message.search_query;
+    find_spots(&query.loc, query.rad).await
 }
 
 fn build_output_payload(
