@@ -1,24 +1,24 @@
+use anyhow::anyhow;
 use bytes::Bytes;
-use std::{error::Error, str};
+use serde_json::Value;
+use std::{
+    error::Error,
+    str::{self, FromStr},
+};
+
+const REQUEST_ID_KEY: &str = "request_id";
 
 pub fn try_get_request_id(payload: &Bytes) -> Result<String, Box<dyn Error>> {
-    // TODO: get this monstrosity cleaner
-    /*let request_id = str::from_utf8(&payload)
-    .map(|payload| {
-        serde_json::to_value(payload)
-            .map(|value| {
-                value
-                    .as_object()
-                    .and_then(|object| object.get(&"request_id".to_string()))
-                    .map(|value| value.to_string())
-            })
-            .ok()
-    })
-    .ok()
-    .flatten()
-    .flatten();*/
-
     let payload_str = str::from_utf8(payload)?;
+    let payload_val = Value::from_str(payload_str)?;
 
-    Ok("UNKNOWN".to_string())
+    let payload_obj = payload_val
+        .as_object()
+        .ok_or(anyhow!("expected payload to be object"))?;
+
+    let request_id_val = payload_obj
+        .get(&REQUEST_ID_KEY.to_string())
+        .ok_or(anyhow!("expected object to have key {REQUEST_ID_KEY}"))?;
+
+    Ok(request_id_val.to_string())
 }
