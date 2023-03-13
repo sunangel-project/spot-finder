@@ -1234,6 +1234,7 @@ version = "0.0.2"
 dependencies = [
  "anyhow",
  "async-nats",
+ "bytes",
  "futures-util",
  "osm-xml",
  "reqwest",

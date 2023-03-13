@@ -6,10 +6,12 @@ use std::{
 use anyhow::anyhow;
 use async_nats::{Client, Message};
 use futures_util::stream::StreamExt;
+use messaging_common::try_get_request_id;
 use serde::{Deserialize, Serialize};
 
 pub mod direction;
 pub mod location;
+pub mod messaging_common;
 pub mod spot_finder;
 
 use location::Location;
@@ -36,18 +38,25 @@ struct PartMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ErrorMessage {
+    request_id: String,
     sender: String,
     reason: String,
     input: String,
 }
 
+const IN_Q: &str = "search";
+const GROUP: &str = "spot-finder";
+
+const OUT_Q: &str = "spots";
+const ERR_Q: &str = "error";
+
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
     let host = std::env::var("NATS_HOST").unwrap_or("localhost".into());
-    let client = &async_nats::connect(host).await?;
-    let subscriber = client
-        .queue_subscribe("search".to_string(), "spot-finder".to_string())
-        .await?;
+    let client = &async_nats::connect(&host).await?;
+    let subscriber = client.queue_subscribe(IN_Q.into(), GROUP.into()).await?;
+
+    println!("Listening to {} for messages in queue '{IN_Q}'", &host);
 
     subscriber
         .for_each_concurrent(16, |msg| async move {
@@ -71,7 +80,7 @@ async fn handle_message(client: &Client, msg: &Message) -> Result<(), Box<dyn Er
     for (i, spot) in spots.into_iter().enumerate() {
         client
             .publish(
-                "spots".to_string(),
+                OUT_Q.to_string(),
                 build_output_payload(spot, i, total_num, &in_value)?
                     .to_string()
                     .into(),
@@ -114,7 +123,7 @@ fn build_output_payload(
 async fn send_error_message(client: &Client, msg: &Message, err: Box<dyn Error>) {
     if let Err(_) = client
         .publish(
-            "error".to_string(),
+            ERR_Q.to_string(),
             build_error_payload(msg, &err).to_string().into(),
         )
         .await
@@ -125,7 +134,8 @@ async fn send_error_message(client: &Client, msg: &Message, err: Box<dyn Error>)
 
 fn build_error_payload(msg: &Message, err: &Box<dyn Error>) -> String {
     json!(ErrorMessage {
-        sender: "spot-finder".to_string(),
+        request_id: try_get_request_id(&msg.payload).unwrap_or("UNKNOWN".to_string()),
+        sender: GROUP.to_string(),
         reason: format!("{err}"),
         input: format!("{msg:?}"),
     })
